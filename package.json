@@ -1,0 +1,36 @@
+{
+  "name": "the-booth",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "dev:vercel": "vercel dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:exhaustive": "EXHAUSTIVE_POKER_TEST=1 node --import tsx --test tests/exhaustive.test.ts"
+  },
+  "dependencies": {
+    "@vercel/functions": "^3.7.5",
+    "next": "16.2.11",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "redis": "^6.1.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.2.11",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3"
+  }
+}
