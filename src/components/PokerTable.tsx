@@ -3,10 +3,11 @@
 import { Avatar } from "./Avatar";
 import { Card } from "./Card";
 import type { RoomSnapshot } from "@/lib/poker/view";
+import { zhHandMessage, zhPokerAction } from "@/lib/client/labels";
 import styles from "./PokerTable.module.css";
 
 const POSITIONS = [styles.bottom, styles.left, styles.topLeft, styles.topRight, styles.right];
-const STREETS: Record<string, string> = { preflop: "Pre-flop", flop: "The flop", turn: "Fourth street", river: "The river", complete: "Showdown" };
+const STREETS: Record<string, string> = { preflop: "翻牌前", flop: "翻牌", turn: "转牌", river: "河牌", complete: "摊牌" };
 
 function Chips({ amount }: { amount: number }) {
   if (!amount) return null;
@@ -18,16 +19,16 @@ export function PokerTable({ state }: { state: RoomSnapshot }) {
   const relative = (seat: number) => viewer ? (seat - viewer.seat + 5) % 5 : seat;
   const openSeats = Array.from({ length: 5 }, (_, seat) => seat).filter((seat) => !state.players.some((player) => player.seat === seat));
   const streetLabel = state.hand ? STREETS[state.hand.street] ?? state.hand.street : "";
-  const message = state.hand?.message ?? "Waiting for the table";
+  const message = zhHandMessage(state.hand?.message ?? "等待开局");
   const showMessage = !state.hand || ![state.hand.street, streetLabel.toLowerCase().replace(/^the /, "")].includes(message.toLowerCase());
   return (
-    <section className={styles.shell} aria-label="Poker table">
+    <section className={styles.shell} aria-label="德州扑克桌">
       <div className={styles.light} />
       <div className={styles.table}>
         <div className={styles.rail} />
         <div className={styles.feltTexture} />
         <div className={styles.center}>
-          <div className={styles.pot}><span>Main pot</span><strong key={state.pot}>{state.pot.toLocaleString()}</strong><div key={`pot-${state.pot}`} className={styles.potChips}><i /><i /><i /><i /></div></div>
+          <div className={styles.pot}><span>主池</span><strong key={state.pot}>{state.pot.toLocaleString()}</strong><div key={`pot-${state.pot}`} className={styles.potChips}><i /><i /><i /><i /></div></div>
           <div className={styles.board}>
             {Array.from({ length: 5 }, (_, index) => <Card key={`${state.hand?.id ?? "empty"}-${index}`} card={state.hand?.board[index] ?? null} delay={index * 70} placeholder={!state.hand?.board[index]} />)}
           </div>
@@ -42,17 +43,17 @@ export function PokerTable({ state }: { state: RoomSnapshot }) {
               <div className={styles.identity}>
                 <Avatar index={player.avatar} size={relative(player.seat) === 0 ? "lg" : "md"} />
                 {isActor && state.hand?.deadlineAt ? <span className={styles.timer} style={{ animationDuration: `${Math.max(1, (state.hand.deadlineAt - state.serverTime) / 1000)}s` }} /> : null}
-                <div><span>{player.name}{player.isBot || !player.connected ? <em>{player.isBot ? "BOT" : "AWAY"}</em> : null}</span><strong key={player.stack} className={styles.stack}>{player.stack.toLocaleString()}</strong></div>
+                <div><span>{player.name}{player.isBot || !player.connected ? <em>{player.isBot ? "机器人" : "离开"}</em> : null}</span><strong key={player.stack} className={styles.stack}>{player.stack.toLocaleString()}</strong></div>
               </div>
               <div className={styles.hole}>{player.hole.map((card, index) => <Card key={`${state.hand?.id ?? "waiting"}-${index}`} card={card} small deal delay={index * 85} />)}</div>
-              {player.lastAction ? <span key={`${state.hand?.id}-${player.lastAction}-${player.bet}-${player.committed}`} className={styles.action}>{player.lastAction}</span> : null}
-              {player.sittingOut ? <span className={styles.sitting}>Sitting out</span> : null}
+              {player.lastAction ? <span key={`${state.hand?.id}-${player.lastAction}-${player.bet}-${player.committed}`} className={styles.action}>{zhPokerAction(player.lastAction)}</span> : null}
+              {player.sittingOut ? <span className={styles.sitting}>暂离</span> : null}
               <Chips key={`${state.hand?.id}-${state.hand?.street}-${player.bet}`} amount={player.bet} />
               {state.hand?.dealerSeat === player.seat ? <span key={state.hand.id} className={styles.button}>D</span> : null}
             </div>
           );
         })}
-        {openSeats.map((seat) => <div key={`open-${seat}`} className={`${styles.openSeat} ${POSITIONS[relative(seat)]}`}>Open seat</div>)}
+        {openSeats.map((seat) => <div key={`open-${seat}`} className={`${styles.openSeat} ${POSITIONS[relative(seat)]}`}>空座</div>)}
       </div>
     </section>
   );
