@@ -58,7 +58,7 @@ export async function createRoom(nameValue: unknown, avatarValue: unknown, setti
   const avatar = Math.max(0, Math.min(11, Number(avatarValue) || 0));
   const smallBlind = Math.max(1, Math.min(1_000, Math.trunc(settingsValue?.smallBlind ?? 10)));
   const bigBlind = Math.max(smallBlind * 2, Math.min(2_000, Math.trunc(settingsValue?.bigBlind ?? smallBlind * 2)));
-  const buyIn = Math.max(bigBlind * 40, Math.min(bigBlind * 250, Math.trunc(settingsValue?.buyIn ?? bigBlind * 100)));
+  const buyIn = Math.max(bigBlind * 40, Math.min(bigBlind * 250, Math.trunc(settingsValue?.buyIn ?? 3_000)));
   const actionSeconds = Math.max(15, Math.min(60, Math.trunc(settingsValue?.actionSeconds ?? 25)));
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const roomCode = code();

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RoomSnapshot } from "@/lib/poker/view";
 import type { RoomCommand } from "@/lib/server/rooms";
 import { playSound } from "@/lib/client/sound";
+import { BOT_STYLE_LABELS, zhHandMessage } from "@/lib/client/labels";
 import { Avatar } from "./Avatar";
 import { PokerTable } from "./PokerTable";
 import styles from "./TableRoom.module.css";
@@ -39,7 +40,7 @@ export function TableRoom({ code }: { code: string }) {
   }, [code]);
 
   useEffect(() => {
-    refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Could not open this room")).finally(() => setLoading(false));
+    refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "无法打开这个房间")).finally(() => setLoading(false));
   }, [refresh]);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ export function TableRoom({ code }: { code: string }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setState(data.snapshot);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not join"); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "加入房间失败"); }
     finally { setJoining(false); }
   }
 
@@ -130,7 +131,7 @@ export function TableRoom({ code }: { code: string }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setState(data.snapshot);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Action failed"); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "操作失败"); }
     finally { setPending(false); }
   }
 
@@ -160,16 +161,16 @@ export function TableRoom({ code }: { code: string }) {
     return () => removeEventListener("keydown", onKeyDown);
   });
 
-  if (loading) return <main className={styles.loading}><div className={styles.loader}>Shuffling the deck</div></main>;
-  if (!state) return <main className={styles.loading}><div className={styles.missing}><span>♠</span><h1>The table is gone.</h1><p>{error || "This room expired or never existed."}</p><Link href="/">Open a new room</Link></div></main>;
+  if (loading) return <main className={styles.loading}><div className={styles.loader}>正在洗牌</div></main>;
+  if (!state) return <main className={styles.loading}><div className={styles.missing}><span>♠</span><h1>这桌已经散了。</h1><p>{error || "房间可能已过期，或从未存在。"}</p><Link href="/">重新开一桌</Link></div></main>;
   if (!state.viewerId) return (
     <main className={styles.joinPage}>
       <div className={styles.joinBackdrop} />
       <section className={styles.joinCard}>
-        <span className={styles.kicker}>You&apos;re invited to</span><h1>The Booth</h1><p>Room {code}</p>
-        <label htmlFor="join-name">Your name</label><input id="join-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={20} placeholder="Display name" />
+        <span className={styles.kicker}>你被邀请加入</span><h1>The Booth</h1><p>房间 {code}</p>
+        <label htmlFor="join-name">你的昵称</label><input id="join-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={20} placeholder="输入昵称" />
         <div className={styles.joinAvatars}>{Array.from({ length: 12 }, (_, index) => <button key={index} onClick={() => setAvatar(index)} aria-pressed={avatar === index}><Avatar index={index} selected={avatar === index} /></button>)}</div>
-        <button className={styles.joinButton} onClick={join} disabled={joining || name.trim().length < 2}>{joining ? "Taking your seat…" : "Take a seat"}</button>
+        <button className={styles.joinButton} onClick={join} disabled={joining || name.trim().length < 2}>{joining ? "正在入座…" : "入座"}</button>
         {error ? <p className={styles.error}>{error}</p> : null}
       </section>
     </main>
@@ -187,36 +188,36 @@ export function TableRoom({ code }: { code: string }) {
       <div className={styles.backdrop} />
       <header className={styles.topbar}>
         <Link href="/" className={styles.wordmark}><span>♠</span> The Booth</Link>
-        <div className={styles.roomMeta}><span className={live ? styles.online : styles.reconnecting}>{live ? "Live" : fallback ? "HTTP sync" : "Connecting"}</span><button className={copied ? styles.copied : ""} onClick={() => void copyInvite()} aria-live="polite">{copied ? "Invite copied ✓" : `Room ${code} · Copy invite`}</button></div>
-        <div className={styles.headerActions}><button aria-label="Toggle sound" onClick={toggleSound}>{sound ? "Sound on" : "Sound off"}</button><button onClick={() => command({ type: "sitOut", value: !viewer.sittingOut })}>{viewer.sittingOut ? "Sit in" : "Sit out"}</button><button onClick={() => setDrawer((value) => !value)}>Table log</button></div>
+        <div className={styles.roomMeta}><span className={live ? styles.online : styles.reconnecting}>{live ? "在线" : fallback ? "备用同步" : "连接中"}</span><button className={copied ? styles.copied : ""} onClick={() => void copyInvite()} aria-live="polite">{copied ? "邀请链接已复制 ✓" : `房间 ${code} · 复制邀请`}</button></div>
+        <div className={styles.headerActions}><button aria-label="切换声音" onClick={toggleSound}>{sound ? "声音开" : "声音关"}</button><button onClick={() => command({ type: "sitOut", value: !viewer.sittingOut })}>{viewer.sittingOut ? "回到牌桌" : "暂离"}</button><button onClick={() => setDrawer((value) => !value)}>牌桌记录</button></div>
       </header>
       <PokerTable state={state} />
       <div className={`${styles.controls} ${pending ? styles.processing : ""}`} aria-busy={pending}>
         {state.legal ? <>
-          <button className={styles.fold} disabled={pending} onClick={() => command({ type: "poker", action: { type: "fold" } })}>Fold <kbd>F</kbd></button>
-          <button className={styles.call} disabled={pending} onClick={() => command({ type: "poker", action: state.legal!.canCheck ? { type: "check" } : { type: "call" } })}>{state.legal.canCheck ? "Check" : `Call ${state.legal.toCall}`} <kbd>C</kbd></button>
-          {state.legal.canRaise ? <div className={styles.raise}><div><span>Raise to</span><strong>{raiseTo.toLocaleString()}</strong></div><input aria-label="Raise amount" type="range" min={state.legal.minRaiseTo} max={state.legal.maxRaiseTo} step={state.settings.bigBlind} value={raiseTo} onChange={(event) => setRaiseTo(Number(event.target.value))} /><div className={styles.presets}><button onClick={() => setRaiseTo(Math.min(state.legal!.maxRaiseTo, Math.max(state.legal!.minRaiseTo, Math.round(state.pot * .5 / state.settings.bigBlind) * state.settings.bigBlind)))}>½ pot</button><button onClick={() => setRaiseTo(Math.min(state.legal!.maxRaiseTo, Math.max(state.legal!.minRaiseTo, state.pot)))}>Pot</button><button onClick={() => setRaiseTo(state.legal!.maxRaiseTo)}>All-in</button>{viewer.timeBankMs > 0 ? <button onClick={() => command({ type: "timeBank" })}>+{viewer.timeBankMs / 1000}s</button> : null}<button className={styles.raiseButton} disabled={pending} onClick={() => command({ type: "poker", action: { type: "raise", amount: raiseTo } })}>Raise</button></div></div> : null}
+          <button className={styles.fold} disabled={pending} onClick={() => command({ type: "poker", action: { type: "fold" } })}>弃牌 <kbd>F</kbd></button>
+          <button className={styles.call} disabled={pending} onClick={() => command({ type: "poker", action: state.legal!.canCheck ? { type: "check" } : { type: "call" } })}>{state.legal.canCheck ? "过牌" : `跟注 ${state.legal.toCall}`} <kbd>C</kbd></button>
+          {state.legal.canRaise ? <div className={styles.raise}><div><span>加注至</span><strong>{raiseTo.toLocaleString()}</strong></div><input aria-label="Raise amount" type="range" min={state.legal.minRaiseTo} max={state.legal.maxRaiseTo} step={state.settings.bigBlind} value={raiseTo} onChange={(event) => setRaiseTo(Number(event.target.value))} /><div className={styles.presets}><button onClick={() => setRaiseTo(Math.min(state.legal!.maxRaiseTo, Math.max(state.legal!.minRaiseTo, Math.round(state.pot * .5 / state.settings.bigBlind) * state.settings.bigBlind)))}>½ 底池</button><button onClick={() => setRaiseTo(Math.min(state.legal!.maxRaiseTo, Math.max(state.legal!.minRaiseTo, state.pot)))}>底池</button><button onClick={() => setRaiseTo(state.legal!.maxRaiseTo)}>全下</button>{viewer.timeBankMs > 0 ? <button onClick={() => command({ type: "timeBank" })}>+{viewer.timeBankMs / 1000}s</button> : null}<button className={styles.raiseButton} disabled={pending} onClick={() => command({ type: "poker", action: { type: "raise", amount: raiseTo } })}>加注</button></div></div> : null}
         </> : <div className={styles.waitingControls}>
-          {host && betweenHands && eligible >= 2 ? <button className={styles.deal} disabled={pending} onClick={() => command({ type: "start" })}>Deal the next hand</button> : null}
-          {host && betweenHands && state.seatsOpen > 0 ? <div className={styles.botButtons}><span>Add a player</span>{(["tight", "balanced", "aggressive"] as const).map((style) => <button key={style} onClick={() => command({ type: "addBot", style })}>{style}</button>)}</div> : null}
-          {!host && betweenHands ? <span>Waiting for the host to deal</span> : null}
-          {!betweenHands ? <span>{state.hand?.actorId === viewer.id ? "Your move" : `${state.players.find((player) => player.id === state.hand?.actorId)?.name ?? "Table"} is thinking`}</span> : null}
-          {viewer.stack < state.settings.buyIn && betweenHands ? <button onClick={() => command({ type: "rebuy" })}>Rebuy to {state.settings.buyIn.toLocaleString()}</button> : null}
+          {host && betweenHands && eligible >= 2 ? <button className={styles.deal} disabled={pending} onClick={() => command({ type: "start" })}>发下一手</button> : null}
+          {host && betweenHands && state.seatsOpen > 0 ? <div className={styles.botButtons}><span>添加机器人</span>{(["tight", "balanced", "aggressive"] as const).map((style) => <button key={style} onClick={() => command({ type: "addBot", style })}>{BOT_STYLE_LABELS[style]}</button>)}</div> : null}
+          {!host && betweenHands ? <span>等待房主发牌</span> : null}
+          {!betweenHands ? <span>{state.hand?.actorId === viewer.id ? "轮到你了" : `${state.players.find((player) => player.id === state.hand?.actorId)?.name ?? "对手"} 正在思考`}</span> : null}
+          {viewer.stack < state.settings.buyIn && betweenHands ? <button onClick={() => command({ type: "rebuy" })}>补充至 {state.settings.buyIn.toLocaleString()}</button> : null}
         </div>}
       </div>
       <div className={styles.reactions}>{["👏", "🔥", "😮", "♠", "♥"].map((reaction) => <button key={reaction} onClick={() => command({ type: "reaction", text: reaction })}>{reaction}</button>)}</div>
       {state.chat.filter((item) => item.reaction).slice(-1).map((item) => <div key={item.id} className={styles.reactionBurst}>{item.text}<small>{item.name}</small></div>)}
-      <button className={`${styles.drawerScrim} ${drawer ? styles.drawerScrimOpen : ""}`} aria-label="Close table log" tabIndex={drawer ? 0 : -1} onClick={() => setDrawer(false)} />
+      <button className={`${styles.drawerScrim} ${drawer ? styles.drawerScrimOpen : ""}`} aria-label="关闭牌桌记录" tabIndex={drawer ? 0 : -1} onClick={() => setDrawer(false)} />
       <aside className={`${styles.drawer} ${drawer ? styles.drawerOpen : ""}`}>
-        <div className={styles.drawerHeader}><div><span>Table log</span><strong>{state.players.length}/5 seated</strong></div><button onClick={() => setDrawer(false)}>Close</button></div>
-        <div className={styles.tabs}><span>Conversation</span></div>
-        <div className={styles.feed}>{state.chat.filter((item) => !item.reaction).length ? state.chat.filter((item) => !item.reaction).map((item) => <p key={item.id}><b>{item.name}</b>{item.text}</p>) : <div className={styles.empty}>The room is quiet. Break the ice.</div>}</div>
-        <form onSubmit={(event) => { event.preventDefault(); if (chat.trim()) { void command({ type: "chat", text: chat }); setChat(""); } }}><input value={chat} onChange={(event) => setChat(event.target.value)} maxLength={180} placeholder="Say something to the table" /><button>Send</button></form>
-        <div className={styles.history}><span>Recent hands</span>{state.history.map((entry) => <p key={entry.id}>{entry.text}<b>{entry.pot?.toLocaleString()}</b></p>)}</div>
-        <div className={styles.roster}><span>Seats</span>{state.players.map((player) => <p key={player.id}><span><Avatar index={player.avatar} size="sm" />{player.name}{player.isBot ? ` · ${player.botStyle}` : ""}</span>{host && player.id !== viewer.id ? <span className={styles.seatActions}>{!player.isBot ? <button onClick={() => command({ type: "transferHost", playerId: player.id })}>Make host</button> : null}<button onClick={() => command(player.isBot ? { type: "removeBot", playerId: player.id } : { type: "kick", playerId: player.id })}>{player.isBot ? "Remove" : "Kick"}</button></span> : null}</p>)}</div>
-        {host ? <button className={styles.pauseButton} onClick={() => command({ type: "pause", value: !state.paused })}>{state.paused ? "Resume automatic deals" : "Pause after this hand"}</button> : null}
+        <div className={styles.drawerHeader}><div><span>牌桌记录</span><strong>{state.players.length}/5 已入座</strong></div><button onClick={() => setDrawer(false)}>关闭</button></div>
+        <div className={styles.tabs}><span>聊天</span></div>
+        <div className={styles.feed}>{state.chat.filter((item) => !item.reaction).length ? state.chat.filter((item) => !item.reaction).map((item) => <p key={item.id}><b>{item.name}</b>{item.text}</p>) : <div className={styles.empty}>牌桌很安静，先说句话吧。</div>}</div>
+        <form onSubmit={(event) => { event.preventDefault(); if (chat.trim()) { void command({ type: "chat", text: chat }); setChat(""); } }}><input value={chat} onChange={(event) => setChat(event.target.value)} maxLength={180} placeholder="跟牌桌上的人说点什么" /><button>发送</button></form>
+        <div className={styles.history}><span>最近牌局</span>{state.history.map((entry) => <p key={entry.id}>{zhHandMessage(entry.text)}<b>{entry.pot?.toLocaleString()}</b></p>)}</div>
+        <div className={styles.roster}><span>座位</span>{state.players.map((player) => <p key={player.id}><span><Avatar index={player.avatar} size="sm" />{player.name}{player.isBot ? ` · ${BOT_STYLE_LABELS[player.botStyle!]}` : ""}</span>{host && player.id !== viewer.id ? <span className={styles.seatActions}>{!player.isBot ? <button onClick={() => command({ type: "transferHost", playerId: player.id })}>设为房主</button> : null}<button onClick={() => command(player.isBot ? { type: "removeBot", playerId: player.id } : { type: "kick", playerId: player.id })}>{player.isBot ? "移除" : "踢出"}</button></span> : null}</p>)}</div>
+        {host ? <button className={styles.pauseButton} onClick={() => command({ type: "pause", value: !state.paused })}>{state.paused ? "恢复自动发牌" : "本手结束后暂停"}</button> : null}
       </aside>
-      {error ? <div className={styles.toast} role="alert">{error}<button onClick={() => setError("")}>Dismiss</button></div> : null}
+      {error ? <div className={styles.toast} role="alert">{error}<button onClick={() => setError("")}>关闭</button></div> : null}
       <EffectsCanvas handId={state.hand?.id ?? ""} boardCount={state.hand?.board.length ?? 0} pot={state.pot} winnerKey={state.hand?.winners.map((item) => `${state.hand?.id}-${item.playerId}`).join(":") ?? ""} winnerSeat={winnerSeat} />
     </main>
   );
